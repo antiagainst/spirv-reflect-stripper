@@ -5,13 +5,15 @@
 
 int SpvStripReflect(uint32_t *data, size_t len) {
   const uint32_t kHeaderLength = 5;
+  const uint32_t kMagicNumber = 0x07230203u;
+  const uint32_t kExtensionOpcode = 10;
   const uint32_t kDecorateIdOpcode = 332;
   const uint32_t kDecorateStringOpcode = 5632;
   const uint32_t kMemberDecorateStringOpcode = 5633;
   const uint32_t kCounterBufferDecoration = 5634;
 
   // Make sure we at least have a header and the magic number is correct
-  if (!data || len < kHeaderLength || data[0] != 0x07230203u)
+  if (!data || len < kHeaderLength || data[0] != kMagicNumber)
     return -1;
 
   std::vector<uint32_t> spirv;
@@ -34,6 +36,13 @@ int SpvStripReflect(uint32_t *data, size_t len) {
       if (data[pos + 2] == kCounterBufferDecoration) {
         skip = true;
       }
+    } else if (opcode == kExtensionOpcode) {
+      if (pos + 1 >= len)
+        return -1;
+      const char *ext_name = reinterpret_cast<const char *>(&data[pos + 1]);
+      if (0 == std::strcmp(ext_name, "SPV_GOOGLE_decorate_string") ||
+          0 == std::strcmp(ext_name, "SPV_GOOGLE_hlsl_functionality1"))
+        skip = true;
     }
 
     if (!skip)
